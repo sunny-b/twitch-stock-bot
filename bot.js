@@ -11,7 +11,7 @@ const connectedEvent = 'connected';
 const { handleErr } = require('./helpers')
 const { IEXCloudClient } = require('node-iex-cloud');
 const fetch = require('node-fetch');
-const { StockQuoter } = require ('./stock_quoter');
+const { Quoter } = require ('./quoter');
 const fs = require('fs');
 const messages = require('./messages');
 
@@ -25,6 +25,11 @@ const commandCallbacks = {
   '!assets': aggregateAssets,
   '!networth': fetchCurrentNetworth,
   '!balance': checkCashBalance,
+  '!price_crypto': fetchCryptoPrice,
+  '!buy_crypto': buyCrypto,
+  '!crypto_buy': buyCrypto,
+  '!sell_crypto': sellCrypto,
+  '!history': getUserHistory,
 }
 
 const twitchClient = new tmi.Client({
@@ -49,7 +54,7 @@ const db = new Client({
 })
 
 const iexOpts = {
-  publishable: process.env.IEX_API_TOKEN,
+  publishable: process.env.IEX_SANDBOX_API_TOKEN,
   version: 'stable'
 }
 
@@ -71,7 +76,7 @@ db.connect()
 //migrator.runAllMigrations(db).catch(e => handleErr(e))
 
 const store = new Store(db)
-const stockQuoter = new StockQuoter(iex)
+const quoter = new Quoter(iex)
 
 twitchClient.on(messageEvent, onMessageHandler);
 twitchClient.on(connectedEvent, onConnectedHandler);
@@ -107,7 +112,7 @@ async function fetchStockPrice(channel, tags, args) {
     return
   }
 
-  const price = await stockQuoter.fetchPrice(ticker)
+  const price = await quoter.fetchStockPrice(ticker)
   if (price === undefined) {
     sendToChannel(channel, `@${tags.username} ${ticker.toUpperCase()} does not exist.`)
   } else {
@@ -172,7 +177,7 @@ async function buyStock(channel, tags, args) {
     return
   }
 
-  const price = await stockQuoter.fetchPrice(ticker)
+  const price = await quoter.fetchStockPrice(ticker)
   const currentBalance = await store.accountBalance(tags.username)
 
   if (currentBalance < (price*shares)) {
@@ -181,7 +186,7 @@ async function buyStock(channel, tags, args) {
   }
 
   try {
-    await store.buyStock(tags.username, ticker, price, shares);
+    await store.buy(tags.username, ticker, price, shares, 'stock');
     sendToChannel(channel, `@${tags.username} bought ${shares} share of ${ticker} for $${price} each. Total purchase: $${price * shares}.`)
   } catch (e) {
     logErr(e, channel, tags.username)
@@ -230,14 +235,14 @@ async function sellStock(channel, tags, args) {
     return
   }
 
-  const price = await stockQuoter.fetchPrice(ticker)
+  const price = await quoter.fetchStockPrice(ticker)
   if (price === undefined) {
     sendToChannel(channel, `@${tags.username} ${ticker.toUpperCase()} does not exist.`)
     return
   }
 
   try {
-    await store.sellStock(tags.username, ticker, price, shares)
+    await store.sell(tags.username, ticker, price, shares)
     sendToChannel(channel, `@${tags.username} sold ${shares} share of ${ticker} for $${price} each. Total amount sold: $${price * shares}.`)
   } catch(e) {
     logErr(e, channel, tags.username)
@@ -251,7 +256,7 @@ async function aggregateAssets(channel, tags, args) {
   }
 
   try {
-    const stocks = await store.getStocks(tags.username)
+    const stocks = await store.getAssets(tags.username)
     const stockMsg = `@${tags.username} ` + stocks.map((stock) => {
       return `${stock.ticker.toUpperCase()}: ${stock.shares} shares`
     }).join(' ----- ')
@@ -269,11 +274,16 @@ async function fetchCurrentNetworth(channel, tags, args) {
 
   try {
     const cashBalance = await store.accountBalance(tags.username)
-    const stocks = await store.getStocks(tags.username)
+    const stocks = await store.getAssets(tags.username)
     const stockValues = []
 
     for (let stock of stocks) {
-      const price = await stockQuoter.fetchPrice(stock.ticker)
+      let price
+      if (stock.assetType === 'stock') {
+        price = await quoter.fetchStockPrice(stock.ticker)
+      } else {
+        price = await quoter.fetchCryptoPrice(stock.ticker)
+      }
       const shares = stock.shares
       stockValues.push(+price * +shares)
     }
@@ -284,6 +294,114 @@ async function fetchCurrentNetworth(channel, tags, args) {
     sendToChannel(channel, `@${tags.username} Your networth is $${totalNetworth}!`)
   } catch (e) {
     logErr(e)
+  }
+}
+
+async function fetchCryptoPrice(channel, tags, args) {
+  if (args.length === 0) {
+    sendToChannel(channel, `@${tags.username} You must pass in a crypto symbol.`)
+    return
+  }
+
+  let symbol = `${args[0].toLowerCase()}usd`
+
+  const price = await quoter.fetchCryptoPrice(symbol)
+  if (price === undefined) {
+    sendToChannel(channel, `@${tags.username} ${symbol.toUpperCase()} does not exist.`)
+  } else {
+    sendToChannel(channel, `@${tags.username} ${symbol.toUpperCase()}: $${price}`)
+  }
+}
+
+async function buyCrypto(channel, tags, args) {
+  let symbol
+  let shares
+
+  if (args.length === 0) {
+    sendToChannel(channel, `@${tags.username} You must pass in a cryto symbol.`)
+    return
+  }
+
+  if (args.length === 1) {
+    symbol = args[0]
+    shares = 1
+  } else {
+    symbol = args[0]
+    shares = +args[1]
+  }
+
+  symbol = symbol+'usd'
+
+  const price = await quoter.fetchCryptoPrice(symbol)
+  const currentBalance = await store.accountBalance(tags.username)
+
+  if (currentBalance < (price*shares)) {
+    sendToChannel(channel, `@${tags.username} You don't have enough money to buy that asset.`)
+    return
+  }
+
+  try {
+    await store.buy(tags.username, symbol, price, shares, 'crypto');
+    sendToChannel(channel, `@${tags.username} bought ${shares} share of ${symbol} for $${price} each. Total purchase: $${price * shares}.`)
+  } catch (e) {
+    logErr(e, channel, tags.username)
+  }
+}
+
+async function sellCrypto(channel, tags, args) {
+  let ticker
+  let shares
+
+  if (args.length === 0) {
+    sendToChannel(channel, `@${tags.username} You must pass in a crypto symbol.`)
+    return
+  }
+
+  if (args.length === 1) {
+    ticker = args[0]
+    shares = 1
+  } else {
+    ticker = args[0]
+    shares = +args[1]
+  }
+
+  ticker = ticker+'usd'
+
+  const ownedShares = await store.fetchOwnedShares(tags.username, ticker)
+
+  if (ownedShares === 0 || shares > ownedShares) {
+    sendToChannel(channel, `@${tags.username} you don't own enough shares of that stock.`)
+    return
+  }
+
+  const price = await quoter.fetchCryptoPrice(ticker)
+  if (price === undefined) {
+    sendToChannel(channel, `@${tags.username} ${ticker.toUpperCase()} does not exist.`)
+    return
+  }
+
+  try {
+    await store.sell(tags.username, ticker, price, shares)
+    sendToChannel(channel, `@${tags.username} sold ${shares} share of ${ticker} for $${price} each. Total amount sold: $${price * shares}.`)
+  } catch(e) {
+    logErr(e, channel, tags.username)
+  }
+}
+
+async function getUserHistory(channel, tags, args) {
+  if (!store.userExists(tags.username)) {
+    sendToChannel(channel, `@${tags.username} You must join the brokerage first. Use !join to join.`)
+    return
+  }
+
+  try {
+    const trades = await store.getTradeHistory(tags.username)
+    const tradesMsg = `@${tags.username} ` + trades.map((trade) => {
+      return `${trade.type}: ${Number(trade.shares).toFixed(4)} shares of ${trade.ticker} for $${trade.price}.`
+    }).join(' ----- ')
+    sendToChannel(channel, tradesMsg)
+  } catch(e) {
+    logErr(e, channel, tags.username)
   }
 }
 

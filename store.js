@@ -15,7 +15,6 @@ class Store {
             console.log(e)
             throw e
         }
-
     }
 
     async addUser(username) {
@@ -45,15 +44,15 @@ class Store {
         }
     }
 
-    async buyStock(username, ticker, price, shares) {
-        let ownedStockQ = `INSERT INTO owned_stocks (username, ticker, shares) VALUES ($1, $2, $3) ON CONFLICT (username, ticker) DO UPDATE SET shares = owned_stocks.shares + $3;`
-        let tradesQ = `INSERT INTO trades (username, ticker, price, shares, type) VALUES ($1, $2, $3, $4, 'buy');`
+    async buy(username, ticker, price, shares, assetType) {
+        let ownedStockQ = `INSERT INTO owned_stocks (username, ticker, shares, asset_type) VALUES ($1, $2, $3, $4) ON CONFLICT (username, ticker) DO UPDATE SET shares = owned_stocks.shares + $3;`
+        let tradesQ = `INSERT INTO trades (username, ticker, price, shares, type, asset_type) VALUES ($1, $2, $3, $4, 'buy', $5);`
         let accountQ = `UPDATE accounts SET balance = (balance - $1) WHERE username = $2;`
 
         try {
             await this.db.query(`BEGIN`)
-            await this.db.query(ownedStockQ, [username, ticker, shares])
-            await this.db.query(tradesQ, [username, ticker, price, shares])
+            await this.db.query(ownedStockQ, [username, ticker, shares, assetType])
+            await this.db.query(tradesQ, [username, ticker, price, shares, assetType])
             await this.db.query(accountQ, [(shares*price), username])
             await this.db.query(`COMMIT`)
         } catch(e) {
@@ -75,10 +74,10 @@ class Store {
     }
 
     async fetchOwnedShares(username, ticker) {
-        let selectStockQ = `SELECT shares FROM owned_stocks WHERE username = $1;`
+        let selectStockQ = `SELECT shares FROM owned_stocks WHERE username = $1 AND ticker = $2;`
 
         try {
-            const res = await this.db.query(selectStockQ, [username])
+            const res = await this.db.query(selectStockQ, [username, ticker])
             if (res.rows.length > 0) {
                 return res.rows[0].shares
             }
@@ -89,7 +88,7 @@ class Store {
         }
     }
 
-    async sellStock(username, ticker, price, shares) {
+    async sell(username, ticker, price, shares) {
         let ownedStockQ = `UPDATE owned_stocks SET shares=(shares - $1) WHERE username = $2 AND ticker = $3;`
         let tradesQ = `INSERT INTO trades (username, ticker, price, shares, type) VALUES ($1, $2, $3, $4, 'sell');`
         let accountQ = `UPDATE accounts SET balance = (balance + $1) WHERE username = $2;`
@@ -107,13 +106,32 @@ class Store {
         }
     }
 
-    async getStocks(username) {
-        const getStocksQ = `SELECT ticker, shares FROM owned_stocks WHERE username = $1;`
+    async getAssets(username) {
+        const getStocksQ = `SELECT ticker, shares, asset_type AS assetType FROM owned_stocks WHERE username = $1;`
 
         try {
             const res = await this.db.query(getStocksQ, [username])
             return res.rows.map((row) => {
                 return { ticker: row.ticker, shares: row.shares }
+            })
+        } catch(e) {
+            console.log(e)
+            throw e
+        }
+    }
+
+    async getTradeHistory(username) {
+        const getStocksQ = `SELECT ticker, shares, type, price FROM trades WHERE username = $1;`
+
+        try {
+            const res = await this.db.query(getStocksQ, [username])
+            return res.rows.map((row) => {
+                return {
+                    ticker: row.ticker,
+                    shares: row.shares,
+                    type: row.type,
+                    price: row.price,
+                }
             })
         } catch(e) {
             console.log(e)

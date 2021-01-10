@@ -3,7 +3,16 @@ let migrations = [
     createAccountsTable,
     createStockTradeTypeEnum,
     createTradesTable,
-    createOwnedStocksTable
+    createOwnedStocksTable,
+    extendTickerCharLength,
+    extendTickerCharLengthTrades,
+    alterSharesDataTypeOwnedStocks,
+    alterSharesDataTypeTrades,
+    alterSharesDataTypeOwnedStocksAgain,
+    alterSharesDataTypeTradesAgain,
+    createAssetTypeEnum,
+    addTypeColumnOwnedStocks,
+    addTypeColumnOwnedTrades,
 ]
 
 function createUsersTable() {
@@ -46,7 +55,6 @@ function createStockTradeTypeEnum() {
     const down = `DROP TYPE IF EXISTS stock_trade;`
 
     return { up, down }
-
 }
 
 function createTradesTable() {
@@ -87,6 +95,61 @@ function createOwnedStocksTable() {
 
     const down = `DROP TABLE IF EXISTS owned_stocks;`
 
+    return { up, down }
+}
+
+function extendTickerCharLength() {
+    const up = `ALTER TABLE owned_stocks ALTER COLUMN ticker TYPE VARCHAR(20);`
+    const down = `ALTER TABLE owned_stocks ALTER COLUMN ticker TYPE VARCHAR(5);`
+    return { up, down }
+}
+
+function extendTickerCharLengthTrades() {
+    const up = `ALTER TABLE trades ALTER COLUMN ticker TYPE VARCHAR(20);`
+    const down = `ALTER TABLE trades ALTER COLUMN ticker TYPE VARCHAR(5);`
+    return { up, down }
+}
+
+function alterSharesDataTypeOwnedStocks() {
+    const up = `ALTER TABLE owned_stocks ALTER COLUMN shares TYPE NUMERIC(8, 2);`
+    const down = `ALTER TABLE owned_stocks ALTER COLUMN shares TYPE INT;`
+    return { up, down }
+}
+
+function alterSharesDataTypeTrades() {
+    const up = `ALTER TABLE trades ALTER COLUMN shares TYPE NUMERIC(8, 2);`
+    const down = `ALTER TABLE trades ALTER COLUMN shares TYPE INT;`
+    return { up, down }
+}
+
+function alterSharesDataTypeOwnedStocksAgain() {
+    const up = `ALTER TABLE owned_stocks ALTER COLUMN shares TYPE NUMERIC(30, 15);`
+    const down = `ALTER TABLE owned_stocks ALTER COLUMN shares TYPE INT;`
+    return { up, down }
+}
+
+function alterSharesDataTypeTradesAgain() {
+    const up = `ALTER TABLE trades ALTER COLUMN shares TYPE NUMERIC(30, 15);`
+    const down = `ALTER TABLE trades ALTER COLUMN shares TYPE INT;`
+    return { up, down }
+}
+
+function createAssetTypeEnum() {
+    const up = `CREATE TYPE asset AS ENUM ('stock', 'crypto');`
+    const down = `DROP TYPE IF EXISTS asset;`
+
+    return { up, down }
+}
+
+function addTypeColumnOwnedStocks() {
+    const up = `ALTER TABLE owned_stocks ADD COLUMN asset_type asset DEFAULT 'stock';`
+    const down = `ALTER TABLE owned_stocks DROP COLUMN type;`
+    return { up, down }
+}
+
+function addTypeColumnOwnedTrades() {
+    const up = `ALTER TABLE trades ADD COLUMN asset_type asset DEFAULT 'stock';`
+    const down = `ALTER TABLE trades DROP COLUMN type;`
     return { up, down }
 }
 
