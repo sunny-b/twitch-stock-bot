@@ -30,6 +30,9 @@ const commandCallbacks = {
   '!crypto_buy': buyCrypto,
   '!sell_crypto': sellCrypto,
   '!history': getUserHistory,
+  '!remove': removeUser,
+  '!admin_join': addNewUser_Admin,
+  '!admin_remove': removeUser_Admin,
 }
 
 const twitchClient = new tmi.Client({
@@ -402,6 +405,67 @@ async function getUserHistory(channel, tags, args) {
     sendToChannel(channel, tradesMsg)
   } catch(e) {
     logErr(e, channel, tags.username)
+  }
+}
+
+async function removeUser(channel, tags, args) {
+  if (!(await store.userExists(tags.username))) {
+    sendToChannel(channel, `@${tags.username} You must join the brokerage first. Use !join to join.`)
+    return
+  }
+
+  try {
+    await store.deleteUser(tags.username)
+    sendToChannel(channel, `@${tags.username} has been removed from the Quorum brokerage.`)
+  } catch(e) {
+    logErr(e, channel, tags.username)
+  }
+}
+
+async function addNewUser_Admin(channel, tags, args) {
+  if (!(await store.isAdmin(tags.username))) {
+    sendToChannel(channel, `@${tags.username} cannot use this command.`)
+    return
+  }
+
+  if (args.length === 0) {
+    sendToChannel(channel, `@${tags.username} You must pass in a username.`)
+    return
+  }
+
+  try {
+    await store.addUser(args[0])
+    sendToChannel(channel, joinMsg(args[0]))
+  } catch (e) {
+    handleErr(e)
+    let msg = `@${tags.username} an error occured`
+    sendToChannel(channel, msg)
+  }
+}
+
+async function removeUser_Admin(channel, tags, args) {
+  if (!(await store.isAdmin(tags.username))) {
+    sendToChannel(channel, `@${tags.username} cannot use this command.`)
+    return
+  }
+
+  if (args.length === 0) {
+    sendToChannel(channel, `@${tags.username} You must pass in a username.`)
+    return
+  }
+
+  const username = args[0]
+
+  if (!(await store.userExists(username))) {
+    sendToChannel(channel, `@${username} does not exist.`)
+    return
+  }
+
+  try {
+    await store.deleteUser(username)
+    sendToChannel(channel, `@${username} has been removed from the Quorum brokerage.`)
+  } catch(e) {
+    logErr(e, channel, username)
   }
 }
 

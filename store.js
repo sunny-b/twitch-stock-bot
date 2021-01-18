@@ -17,6 +17,18 @@ class Store {
         }
     }
 
+    async isAdmin(username) {
+        const userExistsQ = `SELECT is_admin AS isadmin FROM users WHERE name = $1;`
+
+        try {
+            const res = await this.db.query(userExistsQ, [username])
+            return res.rows[0].isadmin
+        } catch (e) {
+            console.log(e)
+            throw e
+        }
+    }
+
     async addUser(username) {
         const insertUserQ = `INSERT INTO users (name) VALUES ($1);`
         const insertAccountQ = `INSERT INTO accounts (username) VALUES ($1);`
