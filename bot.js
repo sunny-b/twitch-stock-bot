@@ -26,9 +26,11 @@ const commandCallbacks = {
   '!networth': fetchCurrentNetworth,
   '!balance': checkCashBalance,
   '!price_crypto': fetchCryptoPrice,
+  '!crypto_price': fetchCryptoPrice,
   '!buy_crypto': buyCrypto,
   '!crypto_buy': buyCrypto,
   '!sell_crypto': sellCrypto,
+  '!crypto_sell': sellCrypto,
   '!history': getUserHistory,
   '!remove': removeUser,
   '!admin_join': addNewUser_Admin,
@@ -282,7 +284,7 @@ async function fetchCurrentNetworth(channel, tags, args) {
 
     for (let stock of stocks) {
       let price
-      if (stock.assetType === 'stock') {
+      if (stock.assettype === 'stock') {
         price = await quoter.fetchStockPrice(stock.ticker)
       } else {
         price = await quoter.fetchCryptoPrice(stock.ticker)
@@ -306,7 +308,7 @@ async function fetchCryptoPrice(channel, tags, args) {
     return
   }
 
-  let symbol = `${args[0].toLowerCase()}usd`
+  let symbol = `${args[0].toLowerCase()}`
 
   const price = await quoter.fetchCryptoPrice(symbol)
   if (price === undefined) {
@@ -332,8 +334,6 @@ async function buyCrypto(channel, tags, args) {
     symbol = args[0]
     shares = +args[1]
   }
-
-  symbol = symbol+'usd'
 
   const price = await quoter.fetchCryptoPrice(symbol)
   const currentBalance = await store.accountBalance(tags.username)
@@ -367,8 +367,6 @@ async function sellCrypto(channel, tags, args) {
     ticker = args[0]
     shares = +args[1]
   }
-
-  ticker = ticker+'usd'
 
   const ownedShares = await store.fetchOwnedShares(tags.username, ticker)
 

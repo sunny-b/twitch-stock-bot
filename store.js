@@ -110,6 +110,7 @@ class Store {
             await this.db.query(ownedStockQ, [shares, username, ticker])
             await this.db.query(tradesQ, [username, ticker, price, shares])
             await this.db.query(accountQ, [(shares*price), username])
+            await this.deleteIfZero(username, ticker)
             await this.db.query(`COMMIT`)
         } catch(e) {
             await this.db.query(`ROLLBACK`)
@@ -118,13 +119,31 @@ class Store {
         }
     }
 
+    async deleteIfZero(username, ticker) {
+        // fetch shares for ticker and user
+        // if shares if 0, delete from owned_stocks table
+        let sharesQ = `SELECT shares FROM owned_stocks WHERE username = $1 AND ticker = $2;`
+        let deleteSharesQ = `DELETE FROM owned_stocks WHERE username = $1 AND ticker = $2;`
+
+        try {
+            const res = await this.db.query(sharesQ, [username, ticker])
+            if (+res.rows[0].shares === 0) {
+                await this.db.query(deleteSharesQ, [username, ticker])
+            }
+        } catch (e) {
+            console.log(e)
+            throw e
+        }
+
+    }
+
     async getAssets(username) {
-        const getStocksQ = `SELECT ticker, shares, asset_type AS assetType FROM owned_stocks WHERE username = $1;`
+        const getStocksQ = `SELECT ticker, shares, asset_type AS assettype FROM owned_stocks WHERE username = $1;`
 
         try {
             const res = await this.db.query(getStocksQ, [username])
             return res.rows.map((row) => {
-                return { ticker: row.ticker, shares: row.shares }
+                return { ticker: row.ticker, shares: row.shares, assettype: row.assettype }
             })
         } catch(e) {
             console.log(e)
