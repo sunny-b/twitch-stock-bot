@@ -13,6 +13,8 @@ let migrations = [
     createAssetTypeEnum,
     addTypeColumnOwnedStocks,
     addTypeColumnOwnedTrades,
+    updateDefaultAccountBalance,
+    updateAllUserAccounts,
 ]
 
 function createUsersTable() {
@@ -150,6 +152,18 @@ function addTypeColumnOwnedStocks() {
 function addTypeColumnOwnedTrades() {
     const up = `ALTER TABLE trades ADD COLUMN asset_type asset DEFAULT 'stock';`
     const down = `ALTER TABLE trades DROP COLUMN type;`
+    return { up, down }
+}
+
+function updateDefaultAccountBalance() {
+    const up = `ALTER TABLE accounts ALTER COLUMN balance SET DEFAULT 100000.00;`
+    const down = `ALTER TABLE accounts ALTER COLUMN balance SET DEFAULT 10000.00;`
+    return { up, down }
+}
+
+function updateAllUserAccounts() {
+    const up = `UPDATE accounts SET balance=balance+90000;`
+    const down = `UPDATE accounts SET balance=balance-90000;`
     return { up, down }
 }
 

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twitch-bot
+  namespace: stock
+spec:
+  selector:
+    matchLabels:
+      run: twitch-bot
+  template:
+    metadata:
+      name: twitch-bot
+      namespace: stock
+      labels:
+        run: twitch-bot
+    spec:
+      containers:
+      - image: sunlib/twitch-bot:latest
+        imagePullPolicy: Always
+        name: twitch-bot
+        env:
+        - name: BOT_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: bot-config
+              key: BOT_USERNAME
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: bot-config
+              key: ENVIRONMENT
+        - name: BOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bot-secret
+              key: BOT_PASSWORD
+        - name: DB_CONN_STRING
+          valueFrom:
+            secretKeyRef:
+              name: bot-secret
+              key: DB_CONN_STRING
+        - name: IEX_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: bot-secret
+              key: IEX_API_TOKEN
+        - name: IEX_SANDBOX_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: bot-secret
+              key: IEX_SANDBOX_API_TOKEN
+      restartPolicy: Always

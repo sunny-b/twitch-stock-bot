@@ -1,0 +1,29 @@
+apiVersion: v1
+data:
+  BOT_USERNAME: paxosraftbot
+  ENVIRONMENT: dev
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"bot-config","creationTimestamp":null},"data":{"BOT_USERNAME":"paxosraftbot","ENVIRONMENT":"dev"}}
+  creationTimestamp: "2021-03-20T16:14:20Z"
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:data:
+        .: {}
+        f:BOT_USERNAME: {}
+        f:ENVIRONMENT: {}
+      f:metadata:
+        f:annotations:
+          .: {}
+          f:kubectl.kubernetes.io/last-applied-configuration: {}
+    manager: kubectl-create
+    operation: Update
+    time: "2021-03-20T16:14:20Z"
+  name: bot-config
+  namespace: stock
+  resourceVersion: "2000842"
+  uid: 3fcfa0ef-d942-4bff-8183-3bcd4e2a1c1d

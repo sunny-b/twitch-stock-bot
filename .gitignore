@@ -1,5 +1,6 @@
 .env
 node_modules
+kubeconfigs
 tags
 package-lock.json
 *.crt

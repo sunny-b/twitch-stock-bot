@@ -12,8 +12,7 @@ class Store {
             const res = await this.db.query(userExistsQ, [username])
             return res.rows.length > 0
         } catch (e) {
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -24,8 +23,7 @@ class Store {
             const res = await this.db.query(userExistsQ, [username])
             return res.rows[0].isadmin
         } catch (e) {
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -40,8 +38,7 @@ class Store {
             await this.db.query(`COMMIT`)
         } catch (e) {
             await this.db.query(`ROLLBACK`)
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -52,7 +49,7 @@ class Store {
             const res = await this.db.query(balanceQ, [username])
             return res.rows[0].balance
         } catch (e) {
-            console.log(e)
+            logAndThrow(e)
         }
     }
 
@@ -69,8 +66,7 @@ class Store {
             await this.db.query(`COMMIT`)
         } catch(e) {
             await this.db.query(`ROLLBACK`)
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -80,8 +76,7 @@ class Store {
         try {
             await this.db.query(deleteUserQ, [username])
         } catch (e) {
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -95,8 +90,7 @@ class Store {
             }
             return 0
         } catch (e) {
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -114,8 +108,7 @@ class Store {
             await this.db.query(`COMMIT`)
         } catch(e) {
             await this.db.query(`ROLLBACK`)
-            console.log(e)
-            throw e
+            logAndThrow(e)
         }
     }
 
@@ -131,8 +124,7 @@ class Store {
                 await this.db.query(deleteSharesQ, [username, ticker])
             }
         } catch (e) {
-            console.log(e)
-            throw e
+          logAndThrow(e)
         }
 
     }
@@ -146,8 +138,7 @@ class Store {
                 return { ticker: row.ticker, shares: row.shares, assettype: row.assettype }
             })
         } catch(e) {
-            console.log(e)
-            throw e
+          logAndThrow(e)
         }
     }
 
@@ -165,10 +156,14 @@ class Store {
                 }
             })
         } catch(e) {
-            console.log(e)
-            throw e
+          logAndThrow(e)
         }
     }
+
+  logAndThrow(e) {
+    console.error(e)
+    throw e
+  }
 }
 
 exports.Store = Store
